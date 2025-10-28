@@ -182,6 +182,8 @@ def main():
     relogio = pygame.time.Clock()
 
     rodando = True
+    perdeu = False  # flag que controla o estado do jogo
+
     while rodando:
         relogio.tick(30)
 
@@ -191,40 +193,65 @@ def main():
                 rodando = False
                 pygame.quit()
                 quit()
+
+            # se o jogador apertar espaço e não tiver perdido
             if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_SPACE:
+                if evento.key == pygame.K_SPACE and not perdeu:
                     for passaro in passaros:
                         passaro.pular()
+                elif evento.key == pygame.K_r and perdeu:
+                    # Reinicia o jogo ao apertar R
+                    main()
+                    return
 
-        # mover as coisas
+        # Se perdeu, mostra tela de fim de jogo
+        if perdeu:
+            texto_gameover = FONTE_PONTOS.render("GAME OVER", True, (255, 0, 0))
+            texto_restart = pygame.font.SysFont('arial', 30).render("Pressione R para reiniciar", True, (255, 255, 255))
+
+            tela.blit(IMAGEM_BACKGROUND, (0, 0))
+            chao.desenhar(tela)
+            tela.blit(texto_gameover, ((TELA_LARGURA - texto_gameover.get_width()) // 2, TELA_ALTURA // 2 - 60))
+            tela.blit(texto_restart, ((TELA_LARGURA - texto_restart.get_width()) // 2, TELA_ALTURA // 2 + 10))
+            pygame.display.update()
+            continue  # pula o resto do loop e espera o jogador reiniciar
+
+        # mover os pássaros e o chão
         for passaro in passaros:
             passaro.mover()
         chao.mover()
 
         adicionar_cano = False
         remover_canos = []
+
         for cano in canos:
             for i, passaro in enumerate(passaros):
                 if cano.colidir(passaro):
-                    passaros.pop(i)
+                    perdeu = True  # ativou o game over
+                    break
                 if not cano.passou and passaro.x > cano.x:
                     cano.passou = True
                     adicionar_cano = True
             cano.mover()
+
             if cano.x + cano.CANO_TOPO.get_width() < 0:
                 remover_canos.append(cano)
 
         if adicionar_cano:
             pontos += 1
             canos.append(Cano(600))
+
         for cano in remover_canos:
             canos.remove(cano)
 
+        # se o passaro cair no chão ou subir demais
         for i, passaro in enumerate(passaros):
             if (passaro.y + passaro.imagem.get_height()) > chao.y or passaro.y < 0:
-                passaros.pop(i)
+                perdeu = True
+                break
 
         desenhar_tela(tela, passaros, canos, chao, pontos)
+    pygame.quit()
 
 
 if __name__ == '__main__':
