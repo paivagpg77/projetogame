@@ -1,10 +1,10 @@
 import pygame
 import os
 import random
-import neat 
+import neat
 
 ai_jogando = True
-geracao = 0 
+geracao = 0
 
 TELA_LARGURA = 500
 TELA_ALTURA = 800
@@ -24,7 +24,7 @@ FONTE_PONTOS = pygame.font.SysFont('arial', 50)
 
 class Passaro:
     IMGS = IMAGENS_PASSARO
-    
+    # animações da rotação
     ROTACAO_MAXIMA = 25
     VELOCIDADE_ROTACAO = 20
     TEMPO_ANIMACAO = 5
@@ -45,11 +45,11 @@ class Passaro:
         self.altura = self.y
 
     def mover(self):
-       
+        # calcular o deslocamento
         self.tempo += 1
         deslocamento = 1.5 * (self.tempo**2) + self.velocidade * self.tempo
 
-        
+        # restringir o deslocamento
         if deslocamento > 16:
             deslocamento = 16
         elif deslocamento < 0:
@@ -57,7 +57,7 @@ class Passaro:
 
         self.y += deslocamento
 
-        
+        # o angulo do passaro
         if deslocamento < 0 or self.y < (self.altura + 50):
             if self.angulo < self.ROTACAO_MAXIMA:
                 self.angulo = self.ROTACAO_MAXIMA
@@ -66,7 +66,7 @@ class Passaro:
                 self.angulo -= self.VELOCIDADE_ROTACAO
 
     def desenhar(self, tela):
-        
+        # definir qual imagem do passaro vai usar
         self.contagem_imagem += 1
 
         if self.contagem_imagem < self.TEMPO_ANIMACAO:
@@ -82,11 +82,12 @@ class Passaro:
             self.contagem_imagem = 0
 
 
+        # se o passaro tiver caindo eu não vou bater asa
         if self.angulo <= -80:
             self.imagem = self.IMGS[1]
             self.contagem_imagem = self.TEMPO_ANIMACAO*2
 
-        
+        # desenhar a imagem
         imagem_rotacionada = pygame.transform.rotate(self.imagem, self.angulo)
         pos_centro_imagem = self.imagem.get_rect(topleft=(self.x, self.y)).center
         retangulo = imagem_rotacionada.get_rect(center=pos_centro_imagem)
@@ -172,13 +173,32 @@ def desenhar_tela(tela, passaros, canos, chao, pontos):
 
     texto = FONTE_PONTOS.render(f"Pontuação: {pontos}", 1, (255, 255, 255))
     tela.blit(texto, (TELA_LARGURA - 10 - texto.get_width(), 10))
+
+    if ai_jogando:
+        texto_geracao = FONTE_PONTOS.render(f"Geração: {geracao}", 1, (255, 255, 255))
+        tela.blit(texto_geracao, (TELA_LARGURA - 10 - texto_geracao.get_width(), 50))
+
     chao.desenhar(tela)
     pygame.display.update()
 
 
+def main(genomas ,config): #fitness function 
+    global geracao
+    geracao+=1
 
-def main():
-    passaros = [Passaro(230, 350)]
+    if ai_jogando:
+        redes =[]
+        lista_genomas = []
+        passaros = []
+        for _, genoma in genomas:
+            rede = neat.nn.FeedForwardNetwork.create(genoma ,config)
+            redes.append(rede)
+            genoma.fitness = 0 
+            lista_genomas.append(genoma)
+            passaros.append(Passaro(230, 350))
+
+    else:
+        passaros = [Passaro(230, 350)]
     chao = Chao(730)
     canos = [Cano(700)]
     tela = pygame.display.set_mode((TELA_LARGURA, TELA_ALTURA))
@@ -197,13 +217,14 @@ def main():
                 rodando = False
                 pygame.quit()
                 quit()
-
-            # se o jogador apertar espaço e não tiver perdido
-            if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_SPACE and not perdeu:
+            #Para  ativar a barra de espaço ser acionada só quando o usuario for jogar 
+            if not ai_jogando:
+              if evento.type == pygame.KEYDOWN:
+                 if evento.key == pygame.K_SPACE and not perdeu:
                     for passaro in passaros:
                         passaro.pular()
-                elif evento.key == pygame.K_r and perdeu:
+                    
+                 elif evento.key == pygame.K_RETURN and perdeu:
                     # Reinicia o jogo ao apertar R
                     main()
                     return
@@ -211,7 +232,7 @@ def main():
         # Se perdeu, mostra tela de fim de jogo
         if perdeu:
             texto_gameover = FONTE_PONTOS.render("GAME OVER", True, (255, 0, 0))
-            texto_restart = pygame.font.SysFont('arial', 30).render("Pressione R para reiniciar", True, (255, 255, 255))
+            texto_restart = pygame.font.SysFont('arial', 30).render("Pressione Enter para reiniciar", True, (255, 255, 255))
 
             tela.blit(IMAGEM_BACKGROUND, (0, 0))
             chao.desenhar(tela)
@@ -219,8 +240,8 @@ def main():
             tela.blit(texto_restart, ((TELA_LARGURA - texto_restart.get_width()) // 2, TELA_ALTURA // 2 + 10))
             pygame.display.update()
             continue  # pula o resto do loop e espera o jogador reiniciar
-
-        # mover os pássaros e o chão
+        
+        
         for passaro in passaros:
             passaro.mover()
         chao.mover()
@@ -248,7 +269,7 @@ def main():
         for cano in remover_canos:
             canos.remove(cano)
 
-        # se o passaro cair no chão ou subir demais
+        
         for i, passaro in enumerate(passaros):
             if (passaro.y + passaro.imagem.get_height()) > chao.y or passaro.y < 0:
                 perdeu = True
@@ -256,7 +277,8 @@ def main():
 
         desenhar_tela(tela, passaros, canos, chao, pontos)
     pygame.quit()
-
+def rodar():
+    pass
 
 if __name__ == '__main__':
     main()
